@@ -9,6 +9,9 @@ from utils.utils import apply_segmentation, display_slice
 from skimage import io, exposure
 import os
 import numpy as np
+import cv2
+from .Config import PALLETTE, STYLE_TEMPLATE
+
 
 class MultiPlaneBrainTumorApp(QMainWindow):
     def __init__(self):
@@ -28,18 +31,7 @@ class MultiPlaneBrainTumorApp(QMainWindow):
         self.backend.error_occurred.connect(self.show_error)
         
         # Dark theme palette
-        self.dark_palette = {
-            'background': '#1e1e2e',
-            'foreground': '#ffffff',
-            'primary': '#6c5ce7',
-            'secondary': '#a29bfe',
-            'accent': '#fd79a8',
-            'card': '#2d3436',
-            'text': '#dfe6e9',
-            'success': '#00b894',
-            'warning': '#fdcb6e',
-            'danger': '#d63031'
-        }
+        self.dark_palette = PALLETTE
         
         # Apply styles
         self.setup_styles()
@@ -60,69 +52,13 @@ class MultiPlaneBrainTumorApp(QMainWindow):
             'coronal': 0,
             'sagittal': 0
         }
-        
+    
     def setup_styles(self):
         """Setup the application styles"""
-        self.setStyleSheet(f"""
-            QMainWindow {{
-                background-color: {self.dark_palette['background']};
-                color: {self.dark_palette['foreground']};
-            }}
-            QPushButton {{
-                background-color: {self.dark_palette['primary']};
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 5px;
-                font-size: 14px;
-                min-width: 120px;
-            }}
-            QPushButton:hover {{
-                background-color: {self.dark_palette['secondary']};
-            }}
-            QPushButton:disabled {{
-                background-color: #636e72;
-                color: #b2bec3;
-            }}
-            QLabel {{
-                color: {self.dark_palette['text']};
-                font-size: 14px;
-            }}
-            QComboBox {{
-                background-color: {self.dark_palette['card']};
-                color: {self.dark_palette['text']};
-                border: 1px solid {self.dark_palette['secondary']};
-                padding: 5px;
-                border-radius: 4px;
-                min-width: 200px;
-            }}
-            QProgressBar {{
-                border: 1px solid {self.dark_palette['secondary']};
-                border-radius: 5px;
-                text-align: center;
-                background: {self.dark_palette['card']};
-            }}
-            QProgressBar::chunk {{
-                background-color: {self.dark_palette['primary']};
-            }}
-            QTabWidget::pane {{
-                border: 1px solid {self.dark_palette['secondary']};
-                border-radius: 5px;
-                background: {self.dark_palette['card']};
-            }}
-            QTabBar::tab {{
-                background: {self.dark_palette['card']};
-                color: {self.dark_palette['text']};
-                padding: 8px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                border: 1px solid {self.dark_palette['secondary']};
-            }}
-            QTabBar::tab:selected {{
-                background: {self.dark_palette['primary']};
-                color: white;
-            }}
-        """)
+        stylesheet = STYLE_TEMPLATE.format(**self.dark_palette)
+        self.setStyleSheet(stylesheet)
+
+   
         
     def init_sidebar(self):
         """Initialize sidebar widgets"""
@@ -273,6 +209,8 @@ class MultiPlaneBrainTumorApp(QMainWindow):
         footer.setStyleSheet("color: #636e72; font-size: 12px;")
         self.sidebar_layout.addWidget(footer)
         
+    
+
     def init_display(self):
         """Initialize display panel widgets"""
         # Right panel for display
@@ -281,90 +219,81 @@ class MultiPlaneBrainTumorApp(QMainWindow):
         self.display_layout.setContentsMargins(20, 20, 20, 20)
         self.display_layout.setSpacing(20)
         self.display_panel.setLayout(self.display_layout)
-        
         self.main_layout.addWidget(self.display_panel)
-        
-        # Create tab widget
+
+        # === Tab Widget ===
         self.view_tabs = QTabWidget()
         self.view_tabs.setStyleSheet("""
             QTabBar::tab { min-width: 120px; }
         """)
-        
-        # Create a single "Multi-Planar" tab with equally spaced views
+        self.display_layout.addWidget(self.view_tabs)
+
+        # === Tab 1: Multi-Planar Views ===
         self.multi_planar_tab = QWidget()
         self.multi_planar_layout = QGridLayout()
         self.multi_planar_layout.setContentsMargins(10, 10, 10, 10)
-        self.multi_planar_layout.setSpacing(15)  # Space between views
+        self.multi_planar_layout.setSpacing(15)
         self.multi_planar_tab.setLayout(self.multi_planar_layout)
-        
-        # Configure column stretch factors for equal spacing
-        self.multi_planar_layout.setColumnStretch(0, 1)  # Axial column
-        self.multi_planar_layout.setColumnStretch(1, 1)  # Coronal column
-        self.multi_planar_layout.setColumnStretch(2, 1)  # Sagittal column
-        
+
+        # Configure column stretch
+        self.multi_planar_layout.setColumnStretch(0, 1)
+        self.multi_planar_layout.setColumnStretch(1, 1)
+        self.multi_planar_layout.setColumnStretch(2, 1)
+
         # Axial view
         self.axial_label = QLabel("Axial View")
         self.axial_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.axial_label.setAlignment(Qt.AlignCenter)
         self.multi_planar_layout.addWidget(self.axial_label, 0, 0)
-        
+
         self.axial_display = QLabel()
         self.axial_display.setAlignment(Qt.AlignCenter)
         self.axial_display.setMinimumSize(300, 300)
         self.axial_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.axial_display.setStyleSheet("background-color: black; border-radius: 5px;")
         self.multi_planar_layout.addWidget(self.axial_display, 1, 0)
-        
+
         # Coronal view
         self.coronal_label = QLabel("Coronal View")
         self.coronal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.coronal_label.setAlignment(Qt.AlignCenter)
         self.multi_planar_layout.addWidget(self.coronal_label, 0, 1)
-        
+
         self.coronal_display = QLabel()
         self.coronal_display.setAlignment(Qt.AlignCenter)
         self.coronal_display.setMinimumSize(300, 300)
         self.coronal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.coronal_display.setStyleSheet("background-color: black; border-radius: 5px;")
         self.multi_planar_layout.addWidget(self.coronal_display, 1, 1)
-        
+
         # Sagittal view
         self.sagittal_label = QLabel("Sagittal View")
         self.sagittal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.sagittal_label.setAlignment(Qt.AlignCenter)
         self.multi_planar_layout.addWidget(self.sagittal_label, 0, 2)
-        
+
         self.sagittal_display = QLabel()
         self.sagittal_display.setAlignment(Qt.AlignCenter)
         self.sagittal_display.setMinimumSize(300, 300)
         self.sagittal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.sagittal_display.setStyleSheet("background-color: black; border-radius: 5px;")
         self.multi_planar_layout.addWidget(self.sagittal_display, 1, 2)
-        
-        # Add vertical dividers between views
-        divider1 = QFrame()
-        divider1.setFrameShape(QFrame.VLine)
-        divider1.setStyleSheet(f"color: {self.dark_palette['secondary']};")
-        self.multi_planar_layout.addWidget(divider1, 0, 0, 2, 1)  # Span both rows
-        
-        divider2 = QFrame()
-        divider2.setFrameShape(QFrame.VLine)
-        divider2.setStyleSheet(f"color: {self.dark_palette['secondary']};")
-        self.multi_planar_layout.addWidget(divider2, 0, 1, 2, 1)  # Span both rows
-        
-        # Add the multi-planar tab
-        self.view_tabs.addTab(self.multi_planar_tab, "Multi-Planar")
-        
-        self.display_layout.addWidget(self.view_tabs)
-        
-        # Single image mode
-        self.single_image_label = QLabel()
-        self.single_image_label.setAlignment(Qt.AlignCenter)
-        self.single_image_label.setMinimumSize(600, 600)
-        self.single_image_label.setStyleSheet("background-color: black; border-radius: 5px;")
-        self.display_layout.addWidget(self.single_image_label)
-        self.single_image_label.setVisible(False)
 
+        # Add Multi-Planar tab
+        self.view_tabs.addTab(self.multi_planar_tab, "Multi-Planar")
+
+        # === Tab 2: Single Image View ===
+        self.single_tab = QWidget()
+        self.single_tab_layout = QVBoxLayout()
+        self.single_tab.setLayout(self.single_tab_layout)
+
+        self.single_display = QLabel()
+        self.single_display.setAlignment(Qt.AlignCenter)
+        self.single_display.setMinimumSize(600, 600)
+        self.single_display.setStyleSheet("background-color: black; border-radius: 5px;")
+        self.single_tab_layout.addWidget(self.single_display)
+
+        self.view_tabs.addTab(self.single_tab, "Single View")
 
     def add_divider(self, layout):
         """Add a styled divider to the layout"""
@@ -390,73 +319,22 @@ class MultiPlaneBrainTumorApp(QMainWindow):
                 self.display_2d_image(file_name)
             else:
                 self.view_tabs.setVisible(True)
-                self.single_image_label.setVisible(False)
+                self.view_tabs.setCurrentWidget(self.multi_planar_tab)
                 self.backend.load_volume(file_name)
 
-    # def display_2d_image(self, path):
-    #     self.view_tabs.setVisible(False)
-    #     self.single_image_label.setVisible(True)
-    #     self.slice_control_group.setVisible(False)
+    
 
-    #     img = io.imread(path, as_gray=True)
-    #     img = (exposure.rescale_intensity(img) * 255).astype(np.uint8)
-    #     qimg = QImage(img.data, img.shape[1], img.shape[0], img.shape[1], QImage.Format_Grayscale8)
-
-    #     pixmap = QPixmap.fromImage(qimg).scaled(
-    #         self.single_image_label.width(),
-    #         self.single_image_label.height(),
-    #         Qt.KeepAspectRatio,
-    #         Qt.SmoothTransformation
-    #     )
-    #     self.single_image_label.setPixmap(pixmap)
-    #     self.volume_info.setText("Loaded 2D image")
-
-    # def display_2d_image(self, path):
-    #     self.view_tabs.setVisible(False)
-    #     self.single_image_label.setVisible(True)
-    #     self.slice_control_group.setVisible(False)
-
-    #     img = io.imread(path, as_gray=True)
-    #     img = exposure.rescale_intensity(img)
-
-    #     # === Apply segmentation if available ===
-    #     if hasattr(self.backend, 'segmentation_masks') and self.backend.segmentation_masks is not None:
-    #         mask = self.backend.segmentation_masks
-    #         if mask.shape != img.shape:
-    #             from cv2 import resize, INTER_NEAREST
-    #             mask = resize(mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=INTER_NEAREST)
-
-    #         img = apply_segmentation(img, mask)
-
-    #     # === Convert to 8-bit and display ===
-    #     img_8bit = (img * 255).astype(np.uint8)
-    #     if img_8bit.ndim == 2:
-    #         qimg = QImage(img_8bit.data, img_8bit.shape[1], img_8bit.shape[0], img_8bit.shape[1], QImage.Format_Grayscale8)
-    #     else:
-    #         qimg = QImage(img_8bit.data, img_8bit.shape[1], img_8bit.shape[0], img_8bit.shape[1]*3, QImage.Format_RGB888)
-
-    #     pixmap = QPixmap.fromImage(qimg).scaled(
-    #         self.single_image_label.width(),
-    #         self.single_image_label.height(),
-    #         Qt.KeepAspectRatio,
-    #         Qt.SmoothTransformation
-    #     )
-    #     self.single_image_label.setPixmap(pixmap)
-    #     self.volume_info.setText("Loaded 2D image")
+   
 
     def display_2d_image(self, path):
-        self.view_tabs.setVisible(False)
-        self.single_image_label.setVisible(True)
-        self.slice_control_group.setVisible(False)
-
-        import cv2
+        self.view_tabs.setCurrentWidget(self.single_tab)  # Switch to single view tab
 
         # Load and normalize grayscale image
         img = io.imread(path, as_gray=True)
         img = exposure.rescale_intensity(img)  # scale to [0, 1]
 
         # Convert to RGB
-        img_rgb = np.stack([img]*3, axis=-1)  # shape: (H, W, 3)
+        img_rgb = np.stack([img] * 3, axis=-1)  # shape: (H, W, 3)
 
         # If segmentation mask exists
         if hasattr(self.backend, 'segmentation_masks') and self.backend.segmentation_masks is not None:
@@ -474,18 +352,17 @@ class MultiPlaneBrainTumorApp(QMainWindow):
 
         # Convert to 8-bit and QImage
         img_8bit = (img_rgb * 255).astype(np.uint8)
-        qimg = QImage(img_8bit.data, img_8bit.shape[1], img_8bit.shape[0], img_8bit.shape[1]*3, QImage.Format_RGB888)
+        qimg = QImage(img_8bit.data, img_8bit.shape[1], img_8bit.shape[0], img_8bit.shape[1] * 3, QImage.Format_RGB888)
 
         # Show image
         pixmap = QPixmap.fromImage(qimg).scaled(
-            self.single_image_label.width(),
-            self.single_image_label.height(),
+            self.single_display.width(),
+            self.single_display.height(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         )
-        self.single_image_label.setPixmap(pixmap)
+        self.single_display.setPixmap(pixmap)
         self.volume_info.setText("Loaded 2D image")
-
 
 
 
@@ -569,6 +446,8 @@ class MultiPlaneBrainTumorApp(QMainWindow):
         self.progress_bar.setValue(value)
     
     
+    
+
     def on_processing_complete(self):
         """Handle completion of backend processing"""
         if hasattr(self.backend, 'volume_data') and self.backend.volume_data is not None:
@@ -582,6 +461,7 @@ class MultiPlaneBrainTumorApp(QMainWindow):
                     'sagittal': dims[2] // 2
                 }
 
+                # Set sliders
                 self.axial_slider.setMaximum(dims[0] - 1)
                 self.coronal_slider.setMaximum(dims[1] - 1)
                 self.sagittal_slider.setMaximum(dims[2] - 1)
@@ -590,9 +470,10 @@ class MultiPlaneBrainTumorApp(QMainWindow):
                 self.coronal_slider.setValue(self.current_slice['coronal'])
                 self.sagittal_slider.setValue(self.current_slice['sagittal'])
 
+                # Show appropriate UI
                 self.slice_control_group.setVisible(True)
                 self.view_tabs.setVisible(True)
-                self.single_image_label.setVisible(False)
+                self.view_tabs.setCurrentWidget(self.multi_planar_tab)
 
                 self.volume_info.setText(f"Loaded: {dims[2]}×{dims[1]}×{dims[0]} volume\nVoxel size: {dims[2]}×{dims[1]}×{dims[0]}")
                 self.update_all_views()
@@ -600,12 +481,11 @@ class MultiPlaneBrainTumorApp(QMainWindow):
             elif len(dims) == 2:
                 # This is a 2D image (e.g., JPG/PNG)
                 self.slice_control_group.setVisible(False)
-                self.view_tabs.setVisible(False)
-                self.single_image_label.setVisible(True)
+                self.view_tabs.setVisible(True)
+                self.view_tabs.setCurrentWidget(self.single_tab)
 
                 self.volume_info.setText(f"Loaded 2D image: {dims[1]}×{dims[0]}")
-                self.display_2d_image(self.backend.image_2d_path)  # Already loaded before
-               
+                self.display_2d_image(self.backend.image_2d_path)
 
             else:
                 self.show_error("Unsupported image format or dimension.")
@@ -614,6 +494,7 @@ class MultiPlaneBrainTumorApp(QMainWindow):
         self.segment_button.setEnabled(True)
         self.classify_button.setEnabled(True)
         QTimer.singleShot(1000, lambda: self.progress_bar.setValue(0))
+
 
     def show_error(self, message):
         """Show error message"""

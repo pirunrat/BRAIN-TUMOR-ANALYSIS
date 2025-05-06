@@ -38,7 +38,7 @@ class Backend(QObject):
             model_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 'segmentation',
-                'SegFormer_Distilled_New_at_0.9475_patch13_response.pth'
+                'SegFormer_New_Arch_at_0.9400.pth'
             )
             
             if not os.path.exists(model_path):
@@ -49,7 +49,7 @@ class Backend(QObject):
             
             # Load pretrained weights
             checkpoint = torch.load(model_path, map_location='cuda')
-            model.load_state_dict(checkpoint['model_state_dict'])
+            model.load_state_dict(checkpoint['model_state_dict'], strict=True)
             model.eval()
             
             return model
