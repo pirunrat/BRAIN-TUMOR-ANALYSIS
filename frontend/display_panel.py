@@ -6,6 +6,7 @@ import numpy as np
 from skimage import io, exposure
 import cv2
 from utils.utils import apply_segmentation, display_slice
+from .slice_viewer import SliceViewer
 
 class DisplayPanel(QWidget):
     def __init__(self, main_window):
@@ -42,47 +43,63 @@ class DisplayPanel(QWidget):
         self.multi_planar_layout.setColumnStretch(1, 1)
         self.multi_planar_layout.setColumnStretch(2, 1)
 
-        # Axial view
-        self.axial_label = QLabel("Axial View")
-        self.axial_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.axial_label.setAlignment(Qt.AlignCenter)
-        self.multi_planar_layout.addWidget(self.axial_label, 0, 0)
+        # # Axial view
+        # self.axial_label = QLabel("Axial View")
+        # self.axial_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # self.axial_label.setAlignment(Qt.AlignCenter)
+        # self.multi_planar_layout.addWidget(self.axial_label, 0, 0)
 
-        self.axial_display = QLabel()
-        self.axial_display.setAlignment(Qt.AlignCenter)
-        self.axial_display.setMinimumSize(300, 300)
-        self.axial_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.axial_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        self.multi_planar_layout.addWidget(self.axial_display, 1, 0)
+        # self.axial_display = QLabel()
+        # self.axial_display.setAlignment(Qt.AlignCenter)
+        # self.axial_display.setMinimumSize(300, 300)
+        # self.axial_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.axial_display.setStyleSheet("background-color: black; border-radius: 5px;")
+        # self.multi_planar_layout.addWidget(self.axial_display, 1, 0)
 
-        # Coronal view
-        self.coronal_label = QLabel("Coronal View")
-        self.coronal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.coronal_label.setAlignment(Qt.AlignCenter)
-        self.multi_planar_layout.addWidget(self.coronal_label, 0, 1)
+        # # Coronal view
+        # self.coronal_label = QLabel("Coronal View")
+        # self.coronal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # self.coronal_label.setAlignment(Qt.AlignCenter)
+        # self.multi_planar_layout.addWidget(self.coronal_label, 0, 1)
 
-        self.coronal_display = QLabel()
-        self.coronal_display.setAlignment(Qt.AlignCenter)
-        self.coronal_display.setMinimumSize(300, 300)
-        self.coronal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.coronal_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        self.multi_planar_layout.addWidget(self.coronal_display, 1, 1)
+        # self.coronal_display = QLabel()
+        # self.coronal_display.setAlignment(Qt.AlignCenter)
+        # self.coronal_display.setMinimumSize(300, 300)
+        # self.coronal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.coronal_display.setStyleSheet("background-color: black; border-radius: 5px;")
+        # self.multi_planar_layout.addWidget(self.coronal_display, 1, 1)
 
-        # Sagittal view
-        self.sagittal_label = QLabel("Sagittal View")
-        self.sagittal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.sagittal_label.setAlignment(Qt.AlignCenter)
-        self.multi_planar_layout.addWidget(self.sagittal_label, 0, 2)
+        # # Sagittal view
+        # self.sagittal_label = QLabel("Sagittal View")
+        # self.sagittal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # self.sagittal_label.setAlignment(Qt.AlignCenter)
+        # self.multi_planar_layout.addWidget(self.sagittal_label, 0, 2)
 
-        self.sagittal_display = QLabel()
-        self.sagittal_display.setAlignment(Qt.AlignCenter)
-        self.sagittal_display.setMinimumSize(300, 300)
-        self.sagittal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.sagittal_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        self.multi_planar_layout.addWidget(self.sagittal_display, 1, 2)
+        # self.sagittal_display = QLabel()
+        # self.sagittal_display.setAlignment(Qt.AlignCenter)
+        # self.sagittal_display.setMinimumSize(300, 300)
+        # self.sagittal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.sagittal_display.setStyleSheet("background-color: black; border-radius: 5px;")
+        # self.multi_planar_layout.addWidget(self.sagittal_display, 1, 2)
 
         # Add Multi-Planar tab
         self.view_tabs.addTab(self.multi_planar_tab, "Multi-Planar")
+
+        # Replace QLabel with SliceViewer for each plane
+        self.axial_view = SliceViewer("axial", self.main_window.sidebar.event_handler)
+        self.coronal_view = SliceViewer("coronal", self.main_window.sidebar.event_handler)
+        self.sagittal_view = SliceViewer("sagittal", self.main_window.sidebar.event_handler)
+
+        for view in [self.axial_view, self.coronal_view, self.sagittal_view]:
+            view.setAlignment(Qt.AlignCenter)
+            view.setMinimumSize(300, 300)
+            view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            view.setStyleSheet("background-color: black; border-radius: 5px;")
+
+        self.multi_planar_layout.addWidget(self.axial_view, 1, 0)
+        self.multi_planar_layout.addWidget(self.coronal_view, 1, 1)
+        self.multi_planar_layout.addWidget(self.sagittal_view, 1, 2)
+
 
         # === Tab 2: Single Image View ===
         self.single_tab = QWidget()
@@ -125,9 +142,13 @@ class DisplayPanel(QWidget):
             coronal_slice = apply_segmentation(coronal_slice, coronal_mask)
             sagittal_slice = apply_segmentation(sagittal_slice, sagittal_mask)
 
-        display_slice(axial_slice, self.axial_display)
-        display_slice(coronal_slice, self.coronal_display)
-        display_slice(sagittal_slice, self.sagittal_display)
+        # display_slice(axial_slice, self.axial_display)
+        # display_slice(coronal_slice, self.coronal_display)
+        # display_slice(sagittal_slice, self.sagittal_display)
+
+        display_slice(axial_slice, self.axial_view)
+        display_slice(coronal_slice, self.coronal_view)
+        display_slice(sagittal_slice, self.sagittal_view)
 
     def display_2d_image(self, path):
         self.view_tabs.setCurrentWidget(self.single_tab)

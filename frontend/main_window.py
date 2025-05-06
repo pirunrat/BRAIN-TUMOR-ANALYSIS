@@ -139,6 +139,6 @@ class MultiPlaneBrainTumorApp(QMainWindow):
             sagittal_slice = apply_segmentation(sagittal_slice, sagittal_mask)
         
         # Display each slice
-        display_slice(axial_slice, self.display_panel.axial_display)
-        display_slice(coronal_slice, self.display_panel.coronal_display)
-        display_slice(sagittal_slice, self.display_panel.sagittal_display)
+        display_slice(axial_slice, self.display_panel.axial_view)
+        display_slice(coronal_slice, self.display_panel.coronal_view)
+        display_slice(sagittal_slice, self.display_panel.sagittal_view)
