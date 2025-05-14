@@ -8,6 +8,10 @@ from torch import nn
 from backend.segmentation.segmentation import Segmentor
 from backend.classification.classification import Classifier
 import matplotlib.pyplot as plt
+from skimage import io, exposure
+import numpy as np
+import cv2
+
 
 class Backend(QObject):
     progress_updated = pyqtSignal(int)
@@ -58,16 +62,29 @@ class Backend(QObject):
             self.error_occurred.emit(f"Failed to load segmentation model: {str(e)}")
             raise
 
+    def convert_to_uint8(self, img):
+        if img.dtype != np.uint8:
+            # Normalize to [0, 255] and convert to uint8
+            img = (255 * (img - np.min(img)) / (np.max(img) - np.min(img))).astype(np.uint8)
+        return img
     
+    def image_normalization(self, img):
+        img_max = np.max(img)
+        img_min = np.min(img)
+        img_range = img_max - img_min
+        if img_range > 0:
+            img = (img - img_min)/(img_range) 
+        else:
+            img = np.zeros_like(img)
+        return img.astype(np.float32)
+
     def load_image_2d(self, file_path):
         try:
-            from skimage import io, exposure
-            import numpy as np
-            import cv2
 
             img = io.imread(file_path, as_gray=True)
-            img = exposure.rescale_intensity(img)
-
+            img = self.convert_to_uint8(img)
+            img = self.image_normalization(img)
+         
             # Resize if smaller than required by model
             min_size = 128
             h, w = img.shape
@@ -81,6 +98,7 @@ class Backend(QObject):
         except Exception as e:
             self.error_occurred.emit(f"Failed to load 2D image: {str(e)}")
 
+    
 
     def load_volume(self, file_name):
         """Load either 2D image or 3D volume"""
@@ -147,6 +165,7 @@ class Backend(QObject):
 
                     with torch.no_grad():
                         output, _ = self.segmentor(input_tensor)
+                        output = torch.sigmoid(output)
                         mask = (output > 0.5).float()
                         masks.append(mask.squeeze().cpu().numpy())
 
@@ -169,11 +188,12 @@ class Backend(QObject):
 
                 with torch.no_grad():
                     output, _ = self.segmentor(input_tensor)
+                    output = torch.sigmoid(output)
                     mask = (output > 0.5).float().squeeze().cpu().numpy()
                     mask = cv2.resize(mask.astype(np.uint8), (slice_data.shape[1], slice_data.shape[0]), interpolation=cv2.INTER_NEAREST)
                     self.segmentation_masks = mask
-                    # plt.imshow(mask, cmap='gray')
-                    # plt.show()
+                    plt.imshow(mask, cmap='gray')
+                    plt.show()
                     
             else:
                 self.error_occurred.emit("Unsupported input dimensions for segmentation.")

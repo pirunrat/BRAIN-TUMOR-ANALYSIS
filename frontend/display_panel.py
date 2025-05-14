@@ -43,44 +43,7 @@ class DisplayPanel(QWidget):
         self.multi_planar_layout.setColumnStretch(1, 1)
         self.multi_planar_layout.setColumnStretch(2, 1)
 
-        # # Axial view
-        # self.axial_label = QLabel("Axial View")
-        # self.axial_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        # self.axial_label.setAlignment(Qt.AlignCenter)
-        # self.multi_planar_layout.addWidget(self.axial_label, 0, 0)
-
-        # self.axial_display = QLabel()
-        # self.axial_display.setAlignment(Qt.AlignCenter)
-        # self.axial_display.setMinimumSize(300, 300)
-        # self.axial_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.axial_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        # self.multi_planar_layout.addWidget(self.axial_display, 1, 0)
-
-        # # Coronal view
-        # self.coronal_label = QLabel("Coronal View")
-        # self.coronal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        # self.coronal_label.setAlignment(Qt.AlignCenter)
-        # self.multi_planar_layout.addWidget(self.coronal_label, 0, 1)
-
-        # self.coronal_display = QLabel()
-        # self.coronal_display.setAlignment(Qt.AlignCenter)
-        # self.coronal_display.setMinimumSize(300, 300)
-        # self.coronal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.coronal_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        # self.multi_planar_layout.addWidget(self.coronal_display, 1, 1)
-
-        # # Sagittal view
-        # self.sagittal_label = QLabel("Sagittal View")
-        # self.sagittal_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        # self.sagittal_label.setAlignment(Qt.AlignCenter)
-        # self.multi_planar_layout.addWidget(self.sagittal_label, 0, 2)
-
-        # self.sagittal_display = QLabel()
-        # self.sagittal_display.setAlignment(Qt.AlignCenter)
-        # self.sagittal_display.setMinimumSize(300, 300)
-        # self.sagittal_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.sagittal_display.setStyleSheet("background-color: black; border-radius: 5px;")
-        # self.multi_planar_layout.addWidget(self.sagittal_display, 1, 2)
+      
 
         # Add Multi-Planar tab
         self.view_tabs.addTab(self.multi_planar_tab, "Multi-Planar")
@@ -149,12 +112,29 @@ class DisplayPanel(QWidget):
         display_slice(axial_slice, self.axial_view)
         display_slice(coronal_slice, self.coronal_view)
         display_slice(sagittal_slice, self.sagittal_view)
-
+    
+    def convert_to_uint8(self, img):
+        if img.dtype != np.uint8:
+            # Normalize to [0, 255] and convert to uint8
+            img = (255 * (img - np.min(img)) / (np.max(img) - np.min(img))).astype(np.uint8)
+        return img
+    
+    def image_normalization(self, img):
+        img_max = np.max(img)
+        img_min = np.min(img)
+        img_range = img_max - img_min
+        if img_range > 0:
+            img = (img - img_min)/(img_range) 
+        else:
+            img = np.zeros_like(img)
+        return img.astype(np.float32)
+    
     def display_2d_image(self, path):
         self.view_tabs.setCurrentWidget(self.single_tab)
 
         img = io.imread(path, as_gray=True)
-        img = exposure.rescale_intensity(img)
+        img = self.convert_to_uint8(img)
+        img = self.image_normalization(img)
         img_rgb = np.stack([img] * 3, axis=-1)
 
         backend = self.main_window.backend
