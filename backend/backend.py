@@ -29,7 +29,7 @@ class Backend(QObject):
         try:
             # Initialize models
             self.segmentor = self._load_segmentation_model()
-            #self.classifier = self._load_classification_model()
+            self.classifier = self._load_classification_model()
             
         except Exception as e:
             self.error_occurred.emit(f"Failed to initialize models: {str(e)}")
@@ -54,6 +54,33 @@ class Backend(QObject):
             # Load pretrained weights
             checkpoint = torch.load(model_path, map_location='cuda')
             model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+            model.eval()
+            
+            return model
+            
+        except Exception as e:
+            self.error_occurred.emit(f"Failed to load segmentation model: {str(e)}")
+            raise
+    
+    def _load_classification_model(self):
+        """Load the segmentation model with pretrained weights"""
+        try:
+            # Get absolute path to model file
+            model_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'classification',
+                'BTC_Model_at_0.9571_FeatAndOut.pth'
+            )
+            
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model file not found at {model_path}")
+
+            # Create model architecture (replace with your actual model class)
+            model = Classifier()
+            
+            # Load pretrained weights
+            checkpoint = torch.load(model_path, map_location='cuda')
+            model.load_state_dict(checkpoint, strict=True)
             model.eval()
             
             return model
@@ -131,6 +158,48 @@ class Backend(QObject):
             self.error_occurred.emit(f"Failed to load image:\n{str(e)}")
 
    
+    def classify_tumor(self):
+        if self.volume_data is None:
+            self.error_occurred.emit("No volume data available for classification.")
+            return None
+
+        try:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.classifier = self.classifier.to(device)
+
+            input_data = self.volume_data
+
+            # If 3D, take the center slice
+            if len(input_data.shape) == 3:
+                d = input_data.shape[0] // 2
+                input_data = input_data[d]
+
+            # Resize to 128x128 if too small
+            if input_data.shape[0] < 128 or input_data.shape[1] < 128:
+                input_data = cv2.resize(input_data, (128, 128), interpolation=cv2.INTER_LINEAR)
+
+            tensor = torch.from_numpy(input_data).unsqueeze(0).unsqueeze(0).float()  # [1, 1, H, W]
+            tensor = tensor.repeat(1, 3, 1, 1).to(device)  # [1, 3, H, W]
+
+            with torch.no_grad():
+                outputs = self.classifier(tensor)  # <-- match your notebook
+
+                probs = torch.softmax(outputs, dim=1).cpu().squeeze(0)  # Shape: [num_classes]
+                #print(f'Probabilities shape : {probs.shape}')
+                pred_class_idx = int(torch.argmax(probs).item())
+
+            class_names = ['glioma_tumor', 'meningioma_tumor', 'no_tumor', 'pituitary_tumor']
+            result = {
+                "predicted_class": class_names[pred_class_idx],
+                "probabilities": {cls: float(probs[i].item()) for i, cls in enumerate(class_names)}
+            }
+
+            return result
+
+        except Exception as e:
+            self.error_occurred.emit(f"Classification failed:\n{str(e)}")
+            return None
+
 
     def segment_tumor(self):
         if self.volume_data is None:

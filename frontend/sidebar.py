@@ -1,6 +1,6 @@
 # === frontend/sidebar_panel.py ===
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox,
-                             QProgressBar, QFrame)
+                             QProgressBar, QFrame, QTabWidget, QTextEdit)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtWidgets import QFileDialog
@@ -144,17 +144,38 @@ class SidebarPanel(QWidget):
         results_section.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.sidebar_layout.addWidget(results_section)
         
-        self.result_display = QLabel("No analysis performed")
-        self.result_display.setAlignment(Qt.AlignLeft)
-        self.result_display.setStyleSheet("""
-            background-color: #2d3436;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 13px;
-            border-left: 4px solid #6c5ce7;
+        # self.result_display = QLabel("No analysis performed")
+        # self.result_display.setAlignment(Qt.AlignLeft)
+        # self.result_display.setStyleSheet("""
+        #     background-color: #2d3436;
+        #     padding: 15px;
+        #     border-radius: 8px;
+        #     font-size: 13px;
+        #     border-left: 4px solid #6c5ce7;
+        # """)
+        # self.result_display.setWordWrap(True)
+        # self.sidebar_layout.addWidget(self.result_display)
+
+        # Create tab widget for results
+        self.result_tabs = QTabWidget()
+        self.result_tabs.setStyleSheet("""
+            QTabBar::tab { height: 30px; width: 150px; }
+            QTabWidget::pane { border: 1px solid #2d3436; border-radius: 8px; }
         """)
-        self.result_display.setWordWrap(True)
-        self.sidebar_layout.addWidget(self.result_display)
+        self.sidebar_layout.addWidget(self.result_tabs)
+
+        # Tab 1: Segmentation result
+        self.segmentation_result = QTextEdit()
+        self.segmentation_result.setReadOnly(True)
+        self.segmentation_result.setStyleSheet("background-color: #2d3436; color: white; padding: 10px;")
+        self.result_tabs.addTab(self.segmentation_result, "Segmentation")
+
+        # Tab 2: Classification result
+        self.classification_result = QTextEdit()
+        self.classification_result.setReadOnly(True)
+        self.classification_result.setStyleSheet("background-color: #2d3436; color: white; padding: 10px;")
+        self.result_tabs.addTab(self.classification_result, "Classification")
+
         
         # Add stretch to push everything up
         self.sidebar_layout.addStretch()
@@ -212,7 +233,9 @@ class SidebarPanel(QWidget):
             color = self.dark_palette['success'] if t == predicted_class else self.dark_palette['text']
             result_text += f"<font color='{color}'>• {t}:</font> <b>{p*100:.1f}%</b><br>"
 
-        self.result_display.setText(result_text)
+        #self.result_display.setText(result_text)
+        self.classification_result.setHtml(result_text)
+        self.result_tabs.setCurrentWidget(self.classification_result)
 
     def reset_buttons(self):
         self.load_button.setEnabled(True)
