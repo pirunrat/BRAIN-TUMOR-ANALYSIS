@@ -1,1 +1,1 @@
-![Alt text](app_demo.jpg)
+![App Demo](app_demo.jpg)
